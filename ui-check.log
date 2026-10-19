@@ -1,48 +1,62 @@
 
 ==== TAIL ====
-[1m[92m    Updating[0m crates.io index
-[1m[92m     Locking[0m 11 packages to latest Rust 1.95 compatible versions
-[1m[92m      Adding[0m cesu8 v1.1.0
-[1m[92m      Adding[0m jni v0.21.1 [1m[33m(available: v0.22.4)[0m
-[1m[92m      Adding[0m windows-sys v0.45.0
-[1m[92m      Adding[0m windows-targets v0.42.2
-[1m[92m      Adding[0m windows_aarch64_gnullvm v0.42.2
-[1m[92m      Adding[0m windows_aarch64_msvc v0.42.2
-[1m[92m      Adding[0m windows_i686_gnu v0.42.2
-[1m[92m      Adding[0m windows_i686_msvc v0.42.2
-[1m[92m      Adding[0m windows_x86_64_gnu v0.42.2
-[1m[92m      Adding[0m windows_x86_64_gnullvm v0.42.2
-[1m[92m      Adding[0m windows_x86_64_msvc v0.42.2
-[1m[92m    Checking[0m cadcraft-geom v0.9.0 (/home/runner/work/cadcraft/cadcraft/crates/geom)
-[1m[92m    Checking[0m cadcraft-color v0.9.0 (/home/runner/work/cadcraft/cadcraft/crates/color)
-[1m[92m   Compiling[0m cadcraft-fonts v0.9.0 (/home/runner/work/cadcraft/cadcraft/crates/fonts)
-[1m[92m   Compiling[0m cadcraft-ui-egui v0.9.0 (/home/runner/work/cadcraft/cadcraft/crates/ui-egui)
-[1m[92m    Checking[0m cadcraft-dxf v0.9.0 (/home/runner/work/cadcraft/cadcraft/crates/dxf)
-[1m[92m    Checking[0m cadcraft-doc v0.9.0 (/home/runner/work/cadcraft/cadcraft/crates/doc)
-[1m[92m    Checking[0m cadcraft-render v0.9.0 (/home/runner/work/cadcraft/cadcraft/crates/render)
-[1m[92m    Checking[0m cadcraft-constraints v0.9.0 (/home/runner/work/cadcraft/cadcraft/crates/constraints)
-[1m[92m    Checking[0m cadcraft-engine v0.9.0 (/home/runner/work/cadcraft/cadcraft/crates/engine)
-[1m[91merror[E0689][0m[1m: can't call method `min` on ambiguous numeric type `{float}`[0m
-   [1m[94m--> [0mcrates/ui-egui/src/compact.rs:293:22
-    [1m[94m|[0m
-[1m[94m293[0m [1m[94m|[0m     let width = want.min(screen * 0.7);
-    [1m[94m|[0m                      [1m[91m^^^[0m
-    [1m[94m|[0m
-[1m[96mhelp[0m: you must specify a type for this binding, like `f32`
-    [1m[94m|[0m
-[1m[94m287[0m [1m[94m| [0m    let want[92m: f32[0m = match (mode, wide) {
-    [1m[94m|[0m             [92m+++++[0m
-
-[1mFor more information about this error, try `rustc --explain E0689`.[0m
-[1m[91merror[0m: could not compile `cadcraft-ui-egui` (lib) due to 1 previous error
-[1m[33mwarning[0m: build failed, waiting for other jobs to finish...
-[1m[91merror[0m: could not compile `cadcraft-ui-egui` (lib test) due to 1 previous error
-[1m[92m   Compiling[0m cadcraft-geom v0.9.0 (/home/runner/work/cadcraft/cadcraft/crates/geom)
-[1m[92m   Compiling[0m cadcraft-color v0.9.0 (/home/runner/work/cadcraft/cadcraft/crates/color)
-[1m[92m   Compiling[0m cadcraft-ui-egui v0.9.0 (/home/runner/work/cadcraft/cadcraft/crates/ui-egui)
-[1m[92m   Compiling[0m cadcraft-dxf v0.9.0 (/home/runner/work/cadcraft/cadcraft/crates/dxf)
-[1m[92m   Compiling[0m cadcraft-doc v0.9.0 (/home/runner/work/cadcraft/cadcraft/crates/doc)
-[1m[92m   Compiling[0m cadcraft-fonts v0.9.0 (/home/runner/work/cadcraft/cadcraft/crates/fonts)
-[1m[92m   Compiling[0m cadcraft-render v0.9.0 (/home/runner/work/cadcraft/cadcraft/crates/render)
-[1m[92m   Compiling[0m cadcraft-constraints v0.9.0 (/home/runner/work/cadcraft/cadcraft/crates/constraints)
-[1m[92m   Compiling[0m cadcraft-engine v0.9.0 (/home/runner/work/cadcraft/cadcraft/crates/engine)
+[1m[92m   Compiling[0m hashbrown v0.16.1
+[1m[92m   Compiling[0m parking_lot v0.12.5
+[1m[92m   Compiling[0m crc32fast v1.5.2
+[1m[92m   Compiling[0m miniz_oxide v0.9.1
+[1m[92m   Compiling[0m polycool v0.4.0
+[1m[92m   Compiling[0m bit-vec v0.9.1
+[1m[92m   Compiling[0m profiling v1.0.18
+[1m[92m   Compiling[0m bit-set v0.10.0
+[1m[92m   Compiling[0m kurbo v0.13.1
+[1m[92m   Compiling[0m flate2 v1.1.10
+[1m[92m   Compiling[0m zmij v1.0.23
+[1m[92m   Compiling[0m crossbeam-utils v0.8.23
+[1m[92m   Compiling[0m codespan-reporting v0.13.1
+[1m[92m   Compiling[0m miniz_oxide v0.8.9
+[1m[92m   Compiling[0m fdeflate v0.3.7
+[1m[92m   Compiling[0m spirv v0.4.0+sdk-1.4.341.0
+[1m[92m   Compiling[0m bytemuck_derive v1.12.1
+[1m[92m   Compiling[0m thiserror-impl v2.0.21
+[1m[92m   Compiling[0m serde_derive v1.0.229
+[1m[92m   Compiling[0m bytemuck v1.25.2
+[1m[92m   Compiling[0m font-types v0.12.6
+[1m[92m   Compiling[0m read-fonts v0.41.0
+[1m[92m   Compiling[0m thiserror v2.0.21
+[1m[92m   Compiling[0m naga-types v30.0.1
+[1m[92m   Compiling[0m color v0.3.3
+[1m[92m   Compiling[0m zerocopy-derive v0.8.61
+[1m[92m   Compiling[0m itoa v1.0.18
+[1m[92m   Compiling[0m raw-window-handle v0.6.2
+[1m[92m   Compiling[0m linebender_resource_handle v0.1.1
+[1m[92m   Compiling[0m either v1.19.0
+[1m[92m   Compiling[0m static_assertions v1.1.0
+[1m[92m   Compiling[0m memchr v2.8.3
+[1m[92m   Compiling[0m wgpu-types v30.0.1
+[1m[92m   Compiling[0m serde v1.0.229
+[1m[92m   Compiling[0m harfrust v0.12.0
+[1m[92m   Compiling[0m peniko v0.6.1
+[1m[92m   Compiling[0m crossbeam-epoch v0.9.21
+[1m[92m   Compiling[0m ash v0.38.0+1.3.281
+[1m[92m   Compiling[0m zerocopy v0.8.61
+[1m[92m   Compiling[0m half v2.7.1
+[1m[92m   Compiling[0m naga v30.0.1
+[1m[92m   Compiling[0m dlib v0.5.3
+[1m[92m   Compiling[0m guillotiere v0.7.0
+[1m[92m   Compiling[0m fearless_simd v0.4.1
+[1m[92m   Compiling[0m winnow v1.0.4
+[1m[92m   Compiling[0m presser v0.3.1
+[1m[92m   Compiling[0m gpu-allocator v0.28.0
+[1m[92m   Compiling[0m vello_common v0.1.0
+[1m[92m   Compiling[0m wayland-sys v0.31.11
+[1m[92m   Compiling[0m crossbeam-deque v0.8.8
+[1m[92m   Compiling[0m khronos-egl v6.0.0
+[1m[92m   Compiling[0m emath v0.36.2
+[1m[92m   Compiling[0m ordered-float v5.5.0
+[1m[92m   Compiling[0m uuid v1.27.0
+[1m[92m   Compiling[0m renderdoc-sys v1.1.0
+[1m[92m   Compiling[0m glow v0.17.0
+[1m[92m   Compiling[0m accesskit v0.24.1
+[1m[92m   Compiling[0m wgpu-naga-bridge v30.0.1
+[1m[92m   Compiling[0m ecolor v0.36.2
+[1m[92m   Compiling[0m wgpu-hal v30.0.1
