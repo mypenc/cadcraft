@@ -9,7 +9,7 @@ use crate::theme::Tokens;
 
 pub mod annoscale;
 
-const TOOLBAR: &[&[(Icon, &str, &str, Option<&str>)]] = &[
+pub(crate) const TOOLBAR: &[&[(Icon, &str, &str, Option<&str>)]] = &[
     &[
         (Icon::New, "new", "New Drawing", Some("Cmd+N")),
         (Icon::Open, "open", "Open", Some("Cmd+O")),

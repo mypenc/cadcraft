@@ -69,6 +69,16 @@ pub const UI_COMMANDS: &[(&str, &str, &[&str], Option<&str>)] = &[
     ("ui.cmdline.clear", "Clear Command History", &[], None),
     ("ui.dialog.language", "Interface Language", &["Edit", "Interface Language"], None),
     ("ui.language", "Language", &[], None),
+    ("ui.layout.auto", "Automatic", &["View", "Layout", "Automatic"], None),
+    ("ui.layout.desktop", "Desktop", &["View", "Layout", "Desktop"], None),
+    ("ui.layout.tablet", "Tablet", &["View", "Layout", "Tablet"], None),
+    ("ui.layout.phone", "Phone", &["View", "Layout", "Phone"], None),
+    ("ui.layout", "Layout", &[], None),
+    ("ui.panels", "Panels", &[], None),
+    ("ui.touchBar", "Floating Touch Bar", &["View", "Touch", "Floating Touch Bar"], None),
+    ("ui.fullscreen", "Full Screen", &["View", "Touch", "Full Screen"], None),
+    ("ui.blockKeyboard", "Block On-screen Keyboard", &["View", "Touch", "Block On-screen Keyboard"], None),
+    ("ui.docsFolder", "Documents Folder", &["View", "Touch", "Documents Folder"], None),
     ("ui.noop", "", &[], None),
     ("ui.quit", "Quit CADCraft", &[], Some("Cmd+Q")),
 ];
@@ -191,6 +201,38 @@ fn run_ui_command_inner(app: &mut CadApp, id: &str, params: &Value) -> Option<Re
                 Err(e) => e.clone(),
             });
             r
+        }
+        "ui.layout.auto" | "ui.layout.desktop" | "ui.layout.tablet" | "ui.layout.phone" | "ui.layout" => {
+            let wanted = id.strip_prefix("ui.layout.").or_else(|| params.get("value").and_then(Value::as_str));
+            if let Some(pref) = wanted.and_then(crate::compact::Pref::parse) {
+                app.compact.pref = pref;
+            }
+            let width = app.last_width;
+            Ok(crate::compact::layout_json(app, crate::compact::mode_for(app.compact.pref, width, cfg!(any(target_os = "android", target_os = "ios")))))
+        }
+        "ui.panels" => {
+            app.compact.panels_open = params.get("value").and_then(Value::as_bool).unwrap_or(!app.compact.panels_open);
+            Ok(json!({ "panels": app.compact.panels_open }))
+        }
+        "ui.touchBar" => {
+            let on = params.get("value").and_then(Value::as_bool).unwrap_or(!app.touch.bar_visible);
+            app.touch.bar_visible = on;
+            Ok(json!({ "touchBar": on }))
+        }
+        "ui.fullscreen" => {
+            let on = params.get("value").and_then(Value::as_bool).unwrap_or(!app.touch.fullscreen);
+            app.touch.fullscreen = on;
+            Ok(json!({ "fullscreen": on }))
+        }
+        "ui.docsFolder" => {
+            let on = params.get("value").and_then(Value::as_bool).unwrap_or(!app.touch.docs_folder);
+            app.touch.docs_folder_request = Some(on);
+            Ok(json!({ "docsFolder": on }))
+        }
+        "ui.blockKeyboard" => {
+            let on = params.get("value").and_then(Value::as_bool).unwrap_or(!app.touch.block_keyboard);
+            app.touch.block_keyboard = on;
+            Ok(json!({ "blockKeyboard": on }))
         }
         "ui.sample" => {
             let d = cadcraft_engine::sample::default_sample();
@@ -503,6 +545,10 @@ pub fn tree(app: &CadApp) -> Vec<(String, Vec<Entry>)> {
         }
     }
     for (id, label, menu, sc) in UI_COMMANDS {
+        // The Touch submenu is for devices with touch input.
+        if menu.get(1) == Some(&"Touch") && !app.touch.enabled {
+            continue;
+        }
         if !menu.is_empty() {
             add(menu, label, id, *sc, true);
         }

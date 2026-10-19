@@ -1,0 +1,28 @@
+name: UI crate check
+
+on:
+  push:
+    branches: [android-port]
+  workflow_dispatch:
+
+concurrency:
+  group: ui-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.95"
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Check the UI crate
+        run: cargo check -p cadcraft-ui-egui --all-targets
+      - name: Touch and layout tests
+        run: cargo test -p cadcraft-ui-egui --lib -- touch compact

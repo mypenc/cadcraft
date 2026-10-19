@@ -16,6 +16,7 @@ pub mod canvas;
 pub mod chrome;
 pub mod clipboard;
 pub mod closing;
+pub mod compact;
 pub mod cmdline;
 pub mod context_menu;
 pub mod control;
@@ -45,6 +46,7 @@ pub mod plotstyles;
 pub mod quick;
 pub mod shortcut_menus;
 pub mod theme;
+pub mod touch;
 pub mod viewcube;
 pub mod vpscale;
 
@@ -60,6 +62,55 @@ pub use control::{ControlRequest, ControlResponse, PendingReply};
 
 /// The host storage key for [`CadApp::prefs_json`].
 pub const PREFS_KEY: &str = "cadcraft.prefs";
+
+/// The command the user is running right now, as the outermost call into [`CadApp`] saw it.
+///
+/// A host whose file picker answers later (Android: the system picker is another activity, and
+/// the app thread must keep serving the window meanwhile) starts the picker, returns `None` from
+/// the `Services` closure, and uses this to run the same command again with the answer ready.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Invocation {
+    /// `CadApp::run(id, params)`.
+    Run(String, Value),
+    /// `CadApp::start(name)`, a menu or typed command.
+    Start(String),
+}
+
+thread_local! {
+    static CURRENT_INVOCATION: std::cell::RefCell<Option<Invocation>> = const { std::cell::RefCell::new(None) };
+    static INVOCATION_DEPTH: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+/// The command being run on this thread (the outermost one), if any.
+pub fn current_invocation() -> Option<Invocation> {
+    CURRENT_INVOCATION.with(|c| c.borrow().clone())
+}
+
+/// Records the outermost invocation for its lifetime.
+struct InvocationScope;
+
+impl InvocationScope {
+    fn enter(what: impl FnOnce() -> Invocation) -> Self {
+        INVOCATION_DEPTH.with(|d| {
+            if d.get() == 0 {
+                CURRENT_INVOCATION.with(|c| *c.borrow_mut() = Some(what()));
+            }
+            d.set(d.get().saturating_add(1));
+        });
+        InvocationScope
+    }
+}
+
+impl Drop for InvocationScope {
+    fn drop(&mut self) {
+        INVOCATION_DEPTH.with(|d| {
+            d.set(d.get().saturating_sub(1));
+            if d.get() == 0 {
+                CURRENT_INVOCATION.with(|c| *c.borrow_mut() = None);
+            }
+        });
+    }
+}
 
 /// How many recently opened drawings are kept (AutoCAD's default for its file history).
 pub const RECENT_FILES: usize = 9;
@@ -208,6 +259,12 @@ pub struct CadApp {
     pub status: Option<(String, f64)>,
     /// Drawings being read on worker threads ([`opening`]).
     pub opening: opening::Opening,
+    /// Touch input and the on-screen keys (Android, iOS, touchscreens); see [`touch`].
+    pub touch: touch::Touch,
+    /// Phone / tablet layout state; see [`compact`].
+    pub compact: compact::State,
+    /// The window width (points) of the last frame, for commands that report the layout.
+    pub last_width: f32,
     pub integrated_titlebar: bool,
     control_rx: Option<Receiver<ControlRequest>>,
     pending_shots: Vec<(u64, Option<String>, std::sync::mpsc::Sender<Value>, f64)>,
@@ -264,6 +321,9 @@ impl CadApp {
             cmd: cmdline::CmdLine::default(),
             status: None,
             opening: opening::Opening::default(),
+            touch: touch::Touch::new(),
+            compact: compact::State::default(),
+            last_width: 1600.0,
             integrated_titlebar: false,
             control_rx: None,
             pending_shots: Vec::new(),
@@ -314,6 +374,7 @@ impl CadApp {
 
     /// Run a command programmatically (or a UI command).
     pub fn run(&mut self, id: &str, params: Value) -> Result<Value, String> {
+        let _scope = InvocationScope::enter(|| Invocation::Run(id.to_string(), params.clone()));
         if let Some(r) = menus::run_ui_command(self, id, &params) {
             return r;
         }
@@ -331,8 +392,19 @@ impl CadApp {
         r
     }
 
+    /// Run an [`Invocation`] again (a host's picker has answered, see [`current_invocation`]).
+    pub fn replay(&mut self, what: Invocation) {
+        match what {
+            Invocation::Run(id, params) => {
+                let _ = self.run(&id, params);
+            }
+            Invocation::Start(name) => self.start(&name),
+        }
+    }
+
     /// Start a command as if typed (interactive when it has prompts).
     pub fn start(&mut self, name: &str) {
+        let _scope = InvocationScope::enter(|| Invocation::Start(name.to_string()));
         if menus::run_ui_command(self, name, &Value::Null).is_some() {
             return;
         }
@@ -348,8 +420,11 @@ impl CadApp {
             let first = text.split_whitespace().next().unwrap_or("");
             // `cmd {json}` is a programmatic call: the engine runs it with those parameters.
             let json_form = text.trim_start().get(first.len()..).is_some_and(|rest| rest.trim_start().starts_with('{'));
-            if !first.is_empty() && !json_form && menus::run_ui_command(self, &first.to_ascii_lowercase(), &Value::Null).is_some() {
-                return None;
+            if !first.is_empty() && !json_form {
+                let _scope = InvocationScope::enter(|| Invocation::Start(first.to_ascii_lowercase()));
+                if menus::run_ui_command(self, &first.to_ascii_lowercase(), &Value::Null).is_some() {
+                    return None;
+                }
             }
         }
         let e = self.session.cmdline(text).err()?.to_string();
@@ -383,6 +458,19 @@ impl CadApp {
         if !self.ui.recent_files.is_empty() {
             prefs["recentFiles"] = json!(self.ui.recent_files);
         }
+        if self.compact.pref != compact::Pref::Auto {
+            prefs["layout"] = json!(self.compact.pref.as_str());
+        }
+        // Touch settings are kept only where touch is on, so a desktop's file is unchanged.
+        if self.touch.enabled {
+            prefs["touchBar"] = json!(self.touch.bar_visible);
+            prefs["touchBarScale"] = json!(self.touch.bar_scale);
+            prefs["blockKeyboard"] = json!(self.touch.block_keyboard);
+            prefs["fullscreen"] = json!(self.touch.fullscreen);
+            if let Some(p) = self.touch.bar_pos {
+                prefs["touchBarPos"] = json!([p.x, p.y]);
+            }
+        }
         prefs.to_string()
     }
 
@@ -406,6 +494,26 @@ impl CadApp {
         }
         if let Some(v) = v.get("saveVersion").and_then(Value::as_str).and_then(SaveVersion::parse) {
             self.ui.save_version = v.year().to_string();
+        }
+        if let Some(l) = v.get("layout").and_then(Value::as_str).and_then(compact::Pref::parse) {
+            self.compact.pref = l;
+        }
+        if let Some(on) = v.get("touchBar").and_then(Value::as_bool) {
+            self.touch.bar_visible = on;
+        }
+        if let Some(k) = v.get("touchBarScale").and_then(Value::as_f64) {
+            self.touch.set_bar_scale(k as f32);
+        }
+        if let Some(on) = v.get("blockKeyboard").and_then(Value::as_bool) {
+            self.touch.block_keyboard = on;
+        }
+        if let Some(on) = v.get("fullscreen").and_then(Value::as_bool) {
+            self.touch.fullscreen = on;
+        }
+        if let Some(p) = v.get("touchBarPos").and_then(Value::as_array)
+            && let (Some(x), Some(y)) = (p.first().and_then(Value::as_f64), p.get(1).and_then(Value::as_f64))
+        {
+            self.touch.restore_bar_pos(Some([x as f32, y as f32]));
         }
         if let Some(files) = v.get("recentFiles").and_then(Value::as_array) {
             self.ui.recent_files = files.iter().filter_map(Value::as_str).filter(|p| !p.is_empty()).take(RECENT_FILES).map(str::to_string).collect();
@@ -623,6 +731,21 @@ impl CadApp {
         raw.events.extend(self.synthetic.drain(..n));
     }
 
+    /// Touch layer upkeep, once per frame from the host after the UI: touch-sized metrics, the
+    /// floating bar (off by default), the soft keyboard filter and the queued Undo / Redo.
+    pub fn touch_frame(&mut self, ctx: &egui::Context) {
+        self.touch.apply_style(ctx);
+        self.touch.show_bar(ctx);
+        self.touch.filter_ime(ctx, None);
+        for a in self.touch.take_actions() {
+            let id = match a {
+                touch::Action::Undo => "u",
+                touch::Action::Redo => "redo",
+            };
+            self.start(id);
+        }
+    }
+
     /// Lay out the whole window.
     pub fn ui(&mut self, ui: &mut egui::Ui) {
         i18n::with_language(self.language(), || self.draw(ui));
@@ -632,27 +755,33 @@ impl CadApp {
         let t0 = now_ms();
         control::begin_frame(ui.ctx());
         let t = theme::Tokens::get();
-        chrome::title_and_toolbar(self, ui);
-        if self.ui.in_window_menu {
-            menus::menu_bar(self, ui);
-        }
-        if self.ui.show_status_bar {
-            chrome::status_bar(self, ui);
-        }
-        if self.ui.show_file_tabs {
-            chrome::file_tabs(self, ui);
-        }
-        let has_doc = !self.session.docs.is_empty() && !self.ui.start_tab;
-        if has_doc && !self.ui.show_toolsets {
-            palettes::toolsets_strip(self, ui);
-        }
-        egui::CentralPanel::default().frame(egui::Frame::NONE.fill(t.canvas)).show(ui, |ui| {
-            if has_doc {
-                docking::show(self, ui);
-            } else {
-                chrome::start_page(self, ui);
+        self.last_width = ui.ctx().content_rect().width();
+        let mode = compact::mode_for(self.compact.pref, ui.ctx().content_rect().width(), cfg!(any(target_os = "android", target_os = "ios")));
+        if mode != compact::Mode::Desktop {
+            compact::draw(self, ui, mode);
+        } else {
+            chrome::title_and_toolbar(self, ui);
+            if self.ui.in_window_menu {
+                menus::menu_bar(self, ui);
             }
-        });
+            if self.ui.show_status_bar {
+                chrome::status_bar(self, ui);
+            }
+            if self.ui.show_file_tabs {
+                chrome::file_tabs(self, ui);
+            }
+            let has_doc = !self.session.docs.is_empty() && !self.ui.start_tab;
+            if has_doc && !self.ui.show_toolsets {
+                palettes::toolsets_strip(self, ui);
+            }
+            egui::CentralPanel::default().frame(egui::Frame::NONE.fill(t.canvas)).show(ui, |ui| {
+                if has_doc {
+                    docking::show(self, ui);
+                } else {
+                    chrome::start_page(self, ui);
+                }
+            });
+        }
         dialogs::show(self, ui.ctx());
         palettes::patterns::prompt_picker(self, ui.ctx());
         closing::prompt(self, ui.ctx());
