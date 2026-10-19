@@ -80,14 +80,14 @@ jobs:
       - name: Build Rust library (arm64-v8a)
         run: |
           chmod +x android/scripts/build.sh
-          android/scripts/build.sh --no-apk
+          android/scripts/build.sh --no-apk 2>&1 | tee /tmp/build.log
 
       # Step 2: package the APK.
       - name: Build release APK
         working-directory: android
         run: |
           CODE=$(( 1000 + ${{ github.run_number }} ))
-          if [ -x ./gradlew ]; then ./gradlew assembleRelease -PccVersionCode=$CODE; else gradle assembleRelease -PccVersionCode=$CODE; fi
+          { if [ -x ./gradlew ]; then ./gradlew assembleRelease -PccVersionCode=$CODE; else gradle assembleRelease -PccVersionCode=$CODE; fi; } 2>&1 | tee -a /tmp/build.log
 
       # Release APKs from Gradle are unsigned and Android refuses to install them
       # ("package appears to be invalid"). Align + sign with apksigner.
@@ -131,3 +131,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.apk.outputs.path }}
+
+      - name: Publish log
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/scripts/push-log.sh android /tmp/build.log

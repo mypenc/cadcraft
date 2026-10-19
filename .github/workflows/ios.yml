@@ -45,7 +45,7 @@ jobs:
           cache-on-failure: true
 
       - name: Build cadcraft-ios (release)
-        run: cargo build --release --target aarch64-apple-ios -p cadcraft-ios
+        run: cargo build --release --target aarch64-apple-ios -p cadcraft-ios 2>&1 | tee /tmp/build.log
 
       # Build the .app by hand: no Xcode project needed.
       - name: Assemble CADCraft.app
@@ -114,3 +114,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.ipa.outputs.path }}
+
+      - name: Publish log
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/scripts/push-log.sh ios /tmp/build.log

@@ -5,6 +5,9 @@ on:
     branches: [android-port]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 concurrency:
   group: ui-check-${{ github.ref }}
   cancel-in-progress: true
@@ -23,6 +26,11 @@ jobs:
         with:
           cache-on-failure: true
       - name: Check the UI crate
-        run: cargo check -p cadcraft-ui-egui --all-targets
+        run: cargo check -p cadcraft-ui-egui --all-targets 2>&1 | tee /tmp/build.log
       - name: Touch and layout tests
-        run: cargo test -p cadcraft-ui-egui --lib -- touch compact
+        run: cargo test -p cadcraft-ui-egui --lib -- touch compact 2>&1 | tee -a /tmp/build.log
+      - name: Publish log
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/scripts/push-log.sh ui-check /tmp/build.log

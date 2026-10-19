@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -35,7 +35,13 @@ jobs:
 
       - name: Build cadcraft-web (release)
         working-directory: apps/cadcraft-web
-        run: trunk build --release
+        run: trunk build --release 2>&1 | tee /tmp/build.log
+
+      - name: Publish log
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/scripts/push-log.sh web /tmp/build.log
 
       - name: Add .nojekyll
         run: touch dist/web/.nojekyll
