@@ -211,8 +211,9 @@ fn run_ui_command_inner(app: &mut CadApp, id: &str, params: &Value) -> Option<Re
             Ok(crate::compact::layout_json(app, crate::compact::mode_for(app.compact.pref, width, cfg!(any(target_os = "android", target_os = "ios")))))
         }
         "ui.panels" => {
-            app.compact.panels_open = params.get("value").and_then(Value::as_bool).unwrap_or(!app.compact.panels_open);
-            Ok(json!({ "panels": app.compact.panels_open }))
+            let open = params.get("value").and_then(Value::as_bool).unwrap_or(app.compact.rail.is_none());
+            app.compact.rail = open.then_some(crate::compact::Cat::Layers);
+            Ok(json!({ "panels": open }))
         }
         "ui.touchBar" => {
             let on = params.get("value").and_then(Value::as_bool).unwrap_or(!app.touch.bar_visible);
