@@ -347,7 +347,7 @@ fn grid(ui: &mut egui::Ui, width: f32, tools: &[(icons::Icon, &'static str, &str
     ui.horizontal_wrapped(|ui| {
         for (icon, id, label) in tools {
             if cell(ui, Vec2::new(cell_w.floor(), 62.0), *icon, label, false).clicked() {
-                *command = Some(id);
+                *command = Some(*id);
             }
         }
     });
