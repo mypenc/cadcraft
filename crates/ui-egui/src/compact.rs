@@ -284,7 +284,7 @@ fn flyout(app: &mut CadApp, ui: &mut egui::Ui, mode: Mode, cat: Cat) {
     let t = Tokens::get();
     let screen = ui.ctx().content_rect().width();
     let wide = matches!(cat, Cat::Layers | Cat::Properties | Cat::Sheets);
-    let want = match (mode, wide) {
+    let want: f32 = match (mode, wide) {
         (Mode::Tablet, true) => 340.0,
         (Mode::Tablet, false) => 300.0,
         (_, true) => 280.0,
